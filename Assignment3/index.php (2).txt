@@ -1,0 +1,170 @@
+<?PHP
+//Marcus Koning, 000852414, December 10, 2022
+
+//calls file which connects program to the database
+include "connect.php";
+
+$method = $_SERVER['REQUEST_METHOD'];//the method the user is trying to use with the url
+$path = $_SERVER['REQUEST_URI'];	//the url the user is passing over
+
+
+
+//filters through the passed url to gain values passed
+$seperator = array("/", "a3","restapp", "product", "quantity", "add", "remove", "categories", "?category=".$_GET['category']."");
+$firstSplit = str_replace($seperator, "", $path);
+$nub = explode("/",$firstSplit);
+
+//filters through the passed url to gain values passed
+$seperator2 = array("a3","restapp", "product", "quantity", "add", "remove", "categories");
+$ClonedSplit = str_replace($seperator2, "", $path);
+//a second filter used to trim the $ClonedSplit
+//in order to gain the desired values passed
+$seperator3 = array("/");
+$ClonedSplit2 = str_replace($seperator3, " ", $ClonedSplit);
+$rub = explode(" ",$ClonedSplit2);
+$arr = array_filter(array_map('trim', $rub));
+
+
+//looks through all the categories from the database
+//and returns only the distinct categories found
+if ($path == "/a3/restapp/product/categories" ) {
+	if ($method == 'GET') {
+		header("Content-Type: application/json");
+		$displayProduct = $db->prepare("SELECT Distinct category FROM product");
+		$displayProduct->execute();
+		$result = $displayProduct->setFetchMode(PDO::FETCH_ASSOC);
+		foreach($displayProduct as $item) {
+			echo json_encode($item);
+		} 
+		http_response_code(200);//returns positive response code if succsesfull
+	}else if($method == 'POST' || $method == 'PUT' || $method == 'DELETE'){
+		http_response_code(405);//returns negaticve response code if the wrong method is used
+	}
+}else{
+	if(count($nub) == 1){//if the array $nub, which is teh first filtered url array has only one element then the following code can run
+		//if the passed id is not not found within the database then the $didItWork array will come up false, otherwise its true
+		$displayProduct2 = $db->prepare("SELECT DISTINCT * FROM product where id = ".$nub[0]."");
+		$displayProduct2->execute();
+		$didItWork = $displayProduct2->Fetch(PDO::FETCH_ASSOC);
+
+		//this if statement is for the first choice
+		if ($path == "/a3/restapp/product/".$nub[0]."" ) {
+			//if method is equal to GET then search the database for the item with an
+			//id equal to the passed url value
+			if ($method == 'GET') {
+				$displayProduct = $db->prepare("SELECT DISTINCT * FROM product where id = ".$nub[0]."");
+				$displayProduct->execute();
+				$result = $displayProduct->setFetchMode(PDO::FETCH_ASSOC);
+				//if true then display the query results and pass
+				//a response code of 200
+				if($didItWork){
+					http_response_code(200);
+					foreach($displayProduct as $item) {
+						echo json_encode($item);
+					} 
+				}else{//return response code of 404
+					http_response_code(404);
+				}
+			}//if the wrong method is used then return a response code of 405
+			else if($method == 'POST' || $method == 'PUT' || $method == 'DELETE'){
+				http_response_code(405);
+			}
+		}
+		//this block of code is used to add items to the database
+		if ($path == "/a3/restapp/product/add/".$nub[0]."" ) {
+			//if the method used is POST and $didItWork is true then
+			//send back a response code of 200, display all items of the database
+			//and insert into the database a new row
+			if ($method == 'POST') {
+				if($didItWork){
+					http_response_code(304);
+				}else{
+					$addProduct = $db->prepare("INSERT INTO product (id, name, description, price, category, quantity) VALUES ('".$nub[0]."','joe','mybro','21.99','Random','2');");
+					$addProduct->execute();
+
+					$displayProduct = $db->prepare("SELECT DISTINCT * FROM product where id = ".$nub[0]."");
+					$displayProduct->execute();
+					$result = $displayProduct->setFetchMode(PDO::FETCH_ASSOC);
+					foreach($displayProduct as $item) {
+						echo json_encode($item);
+					} 
+					http_response_code(200);
+				}
+			}else if($method == 'PUT' || $method == 'GET'){
+				http_response_code(405);//response code of 405 if wrong method is used
+			}
+		}
+		//this chunck of code is used to remove items from the database
+		if ($path == "/a3/restapp/product/remove/".$nub[0]."" ) {
+			//if the correct method is selected and $didItWork is true
+			//then delete from database the row who's id matches to the passed url value
+			//return 204 response code
+			if ($method == 'DELETE') {
+				if($didItWork){
+					$removeProduct = $db->prepare("DELETE From product Where id = ".$nub[0]." LIMIT 1;");
+					$removeProduct->execute();
+					http_response_code(204);
+					
+				}else{//return 304 response code if failure
+					http_response_code(304);
+				}
+			}else if($method == 'PUT' || $method == 'GET'){
+				http_response_code(405);//return 405 response code if incorrect method used
+			}
+		}
+		//this Block of chode is used to display a certain number of rows within the product table
+		if ($path == "/a3/restapp/product/".$nub[0]."?category=".$_GET['category']."" ) {
+			//checks to see if the passed category value is actually within the database
+			$searchForCategory = $db->prepare("SELECT * FROM product where category = ".$_GET['category'].";");
+			$searchForCategory->execute();
+			$isItThere = $searchForCategory->Fetch(PDO::FETCH_ASSOC);
+			//if correct method is used and $isItThere comes up true then
+			//select a certain number of rows and display them
+			//return 200 response code
+			if ($method == 'GET') {
+				if($isItThere){
+					$selectProduct = $db->prepare("SELECT id, name, price, quantity From product LIMIT ".$nub[0].";");
+					$selectProduct->execute();
+					$result = $selectProduct->setFetchMode(PDO::FETCH_ASSOC);
+					foreach($selectProduct as $item) {
+						echo json_encode($item);
+					}
+					http_response_code(200);
+				}else{//return 404 response code if failure
+					http_response_code(404);
+				}
+			}else if($method == 'POST' || $method == 'PUT' || $method == 'DELETE'){
+				http_response_code(405);//return  405 response code if incorrect method used
+			}
+		}
+		
+
+	}
+	//this block of code will update a row 
+	if(count($arr) == 2){
+		//checks to see if an id equal to the id value passed exists within the database
+		$displayProduct2 = $db->prepare("SELECT DISTINCT * FROM product where id = ".$arr[5]."");
+		$displayProduct2->execute();
+		$didItWork = $displayProduct2->Fetch(PDO::FETCH_ASSOC);
+		
+		if ($path == "/a3/restapp/product/quantity/".$arr[5]."/".$arr[6]."" ) {
+			//if method used is Put and $didItWork is true
+			//then update a row within the database who's id is equal to the id passed
+			//return response code of 204
+			if ($method == 'PUT') {
+				if($didItWork){
+					$updateProduct = $db->prepare("UPDATE product SET quantity = ".$arr[6]." Where id = ".$arr[5].";");
+					$updateProduct->execute();
+					http_response_code(204);
+				}else{//return response code of 404 if false
+					http_response_code(404);
+				}
+			}else if($method == 'POST' || $method == 'GET' || $method == 'DELETE'){
+				http_response_code(405);//return response code of 405 if wrong method is used
+			}
+		}
+	}
+
+}
+
+?>

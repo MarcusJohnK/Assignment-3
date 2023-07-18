@@ -1,0 +1,17 @@
+<?php
+//Marcus Koning, 000852414, December 10, 2022
+//established a connection to the database
+$dsn = 'mysql:dbname=product;host=localhost';
+$dbUser = 'sa000852414';
+$password = 'Sa_20010820';
+try {
+    $db = new PDO(
+        $dsn,
+        $dbUser,
+        $password
+    );
+} catch (Exception $e) {
+    die("ERROR: Couldn't connect. {$e->getMessage()}");
+}
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+?>
