@@ -2,8 +2,8 @@
 //Marcus Koning, 000852414, December 10, 2022
 //established a connection to the database
 $dsn = 'mysql:dbname=product;host=localhost';
-$dbUser = 'sa000852414';
-$password = 'Sa_20010820';
+$dbUser = ;
+$password = ;
 try {
     $db = new PDO(
         $dsn,
